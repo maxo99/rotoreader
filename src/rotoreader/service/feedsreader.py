@@ -2,8 +2,8 @@ import logging
 
 import feedparser
 
-from newsreader.model.constants import NEWS_RSS_FEEDS, NFLTeam
-from newsreader.model.feeddata import FeedData, FeedEntry
+from rotoreader.model.constants import NEWS_RSS_FEEDS, NFLTeam
+from rotoreader.model.feeddata import FeedData, FeedEntry
 
 logger = logging.getLogger(__name__)
 

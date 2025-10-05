@@ -2,7 +2,7 @@ from collections import defaultdict
 
 from pydantic import BaseModel, Field
 
-from newsreader.model.constants import NFLTeam
+from rotoreader.model.constants import NFLTeam
 
 
 class FeedEntry(BaseModel):
