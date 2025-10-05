@@ -2,8 +2,8 @@ import logging
 
 import feedparser
 
-from rotoreader.model.constants import NEWS_RSS_FEEDS, NFLTeam
-from rotoreader.model.feeddata import FeedData, FeedEntry
+from rotoreader.constants import NEWS_RSS_FEEDS, NFLTeam
+from rotoreader.model.feeddata import FeedData, FeedData
 
 logger = logging.getLogger(__name__)
 
@@ -14,8 +14,8 @@ def collect_and_process_feeddata():
     return fd, team_counts
 
 
-def collect_feeddata() -> FeedData:
-    fd = FeedData()
+def collect_feeddatas() -> list[FeedData]:
+    fd_list = []
     for feed_id, url in NEWS_RSS_FEEDS.items():
         logger.info(f"Fetching {feed_id} from {url}")
         feed = feedparser.parse(url)
@@ -27,8 +27,8 @@ def collect_feeddata() -> FeedData:
             if isinstance(entry, dict):
                 logger.info(f"Processing {feed_id} entry {entry.get('id', '')}")
                 try:
-                    fd.add_entry(
-                        FeedEntry(
+                    fd_list.add_entry(
+                        FeedData(
                             feed_id=feed_id,
                             id=str(entry.get("id", "")),
                             title=str(entry.get("title", "")),
@@ -42,12 +42,13 @@ def collect_feeddata() -> FeedData:
                     logger.error(f"Error processing {feed_id} entry {entry}: {e}")
                     continue
                 logger.debug(entry)
-        logger.info(f"Collected {len(fd.entries)} entries from {feed_id}")
-    return fd
+        logger.info(f"Collected {len(fd_list)} entries from {feed_id}")
+    return fd_list
 
 
-def process_feeddata(fd: FeedData):
-    for entry in fd.entries:
+def process_feeddata(fd_list: list[FeedData]):
+    for fd in fd_list:
+        for entry in fd.entries:
         entry.teams = [
             team
             for team in NFLTeam
