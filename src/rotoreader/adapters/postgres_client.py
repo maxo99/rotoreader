@@ -1,5 +1,4 @@
 import logging
-from datetime import UTC, datetime
 
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker
@@ -7,16 +6,9 @@ from sqlmodel import SQLModel, select
 
 from rotoreader import config
 from rotoreader.model.feeddata import FeedData
-
-# from oddstracker.domain.kambi_event import Event, SQLModel
+from rotoreader.model.teamdata import TeamData
 
 logger = logging.getLogger(__name__)
-
-
-# @dataclass
-# class SimilarityResponse:
-#     events: list[Event]
-#     scores: list[float]
 
 
 class PostgresClient:
@@ -75,6 +67,68 @@ class PostgresClient:
                 logger.info(f"Upserted feeddata {feeddata.id} successfully.")
         except Exception as e:
             logger.error(f"Error upserting feeddata: {e}")
+            raise e
+
+    def get_all_feeddatas(self) -> list[FeedData]:
+        try:
+            logger.info("Fetching all feeddata from DB")
+            with self.session_maker() as session:
+                query = select(FeedData)
+                feeddatas = list(session.execute(query).scalars().all())
+                return feeddatas
+        except Exception as e:
+            logger.error(f"Error getting feeddata: {e}")
+            raise e
+
+
+
+    def get_feeds_for_team(self, team_abbr: str) -> list[FeedData]:
+        try:
+            logger.info(f"Fetching feeddata for team {team_abbr}")
+            with self.session_maker() as session:
+                query = select(FeedData).where(
+                    text(f"teams::jsonb @> '[\"{team_abbr}\"]'::jsonb")
+                )
+                feeddatas = list(session.execute(query).scalars().all())
+                return feeddatas
+        except Exception as e:
+            logger.error(f"Error getting feeddata for team {team_abbr}: {e}")
+            raise e
+
+    def add_teamdata(self, teamdata: list[TeamData]):
+        try:
+            logger.info(f"Upserting teamdata {len(teamdata)}.")
+            with self.session_maker() as session:
+                # if none exist add all
+                if not session.query(TeamData).first():
+                    session.add_all(teamdata)
+                    session.commit()
+                    logger.info(
+                        f"Upserted teamdata {[td.team_id for td in teamdata]} successfully."
+                    )
+        except Exception as e:
+            logger.error(f"Error upserting teamdata: {e}")
+            raise e
+
+    def get_teams(self) -> list[TeamData]:
+        try:
+            logger.info("Fetching all teams from DB")
+            with self.session_maker() as session:
+                query = select(TeamData)
+                teams = list(session.execute(query).scalars().all())
+                return teams
+        except Exception as e:
+            logger.error(f"Error getting teams: {e}")
+            raise e
+
+    def get_team_by_abbr(self, team_abbr: str) -> TeamData | None:
+        try:
+            logger.info(f"Fetching team with abbreviation {team_abbr}")
+            with self.session_maker() as session:
+                team = session.get(TeamData, team_abbr)
+                return team
+        except Exception as e:
+            logger.error(f"Error getting team by abbreviation: {e}")
             raise e
 
     # def get_events(self, include_deleted: bool = False, **filters) -> list[KambiEvent]:

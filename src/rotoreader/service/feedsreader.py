@@ -2,16 +2,20 @@ import logging
 
 import feedparser
 
-from rotoreader.constants import NEWS_RSS_FEEDS, NFLTeam
-from rotoreader.model.feeddata import FeedData, FeedData
+from rotoreader.constants import NEWS_RSS_FEEDS
+from rotoreader.model.feeddata import FeedData
+from rotoreader.service import PG_CLIENT
+from rotoreader.service.teamprofiler import get_teams
 
 logger = logging.getLogger(__name__)
 
 
-def collect_and_process_feeddata():
-    fd = collect_feeddata()
-    team_counts = process_feeddata(fd)
-    return fd, team_counts
+FEED_FETCH_LIMIT = 5
+
+def collect_and_process_feeddata() -> int:
+    fd = collect_feeddatas()
+    process_feeddata(fd)
+    return len(fd)
 
 
 def collect_feeddatas() -> list[FeedData]:
@@ -23,11 +27,11 @@ def collect_feeddatas() -> list[FeedData]:
             logger.error(f"Error fetching {feed_id}: {feed.bozo_exception}")
             continue
 
-        for entry in feed.entries:
+        for entry in feed.entries[:FEED_FETCH_LIMIT]:
             if isinstance(entry, dict):
                 logger.info(f"Processing {feed_id} entry {entry.get('id', '')}")
                 try:
-                    fd_list.add_entry(
+                    fd_list.append(
                         FeedData(
                             feed_id=feed_id,
                             id=str(entry.get("id", "")),
@@ -48,27 +52,23 @@ def collect_feeddatas() -> list[FeedData]:
 
 def process_feeddata(fd_list: list[FeedData]):
     for fd in fd_list:
-        for entry in fd.entries:
-        entry.teams = [
-            team
-            for team in NFLTeam
-            if any(name in entry.title for name in team.value)
-            or any(name in entry.summary for name in team.value)
-        ]
+        logger.info(f"Processing feed data {fd.id}")
+        try:
+            for team in get_teams():
+                if any(tag in fd.title for tag in team.searchTags) or any(
+                    name in fd.summary for name in team.searchTags
+                ):
+                    logger.info(f"Matched team {team.team_abbr} for feed {fd.id}")
+                    fd.teams.append(team.team_abbr)
+                    if len(fd.teams) >= 2:
+                        break
+            logger.info(f"Storing feed data {fd.id} with teams {fd.teams}")
+            PG_CLIENT.add_feeddata(fd)
+        except Exception as e:
+            logger.error(f"Error processing feed data {fd.id}: {e}")
 
-    team_counts = {team: len(entries) for team, entries in fd._team_cache.items()}
-    for team, count in team_counts.items():
-        logger.info(f"Team {team.name} has {count} entries")
-    return team_counts
 
-
-def preview_feed(feed_url, count=5):
-    try:
-        feed = feedparser.parse(feed_url)
-        if feed.bozo:
-            raise ValueError(f"Error fetching feed: {feed.bozo_exception}")
-        logger.info(f"Feed channel: {feed.channel}")
-        for entry in feed.entries[:count]:
-            logger.info(f"{entry.published}: {entry.title} ({entry.link})")
-    except Exception as e:
-        logger.error(f"Failed to process feed {feed_url}: {e}")
+def get_feeddatas(team_abbr: str | None = None) -> list[FeedData]:
+    if team_abbr:
+        return PG_CLIENT.get_feeds_for_team(team_abbr)
+    return PG_CLIENT.get_all_feeddatas()

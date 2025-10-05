@@ -2,7 +2,10 @@ from dotenv import load_dotenv
 from fastapi import FastAPI
 
 from rotoreader.config import APP_PORT, ROOT_DIR
-from rotoreader.service.feedsreader import collect_feeddata
+from rotoreader.service.feedsreader import (
+    collect_and_process_feeddata,
+    get_feeddatas,
+)
 
 app = FastAPI()
 
@@ -16,17 +19,17 @@ def health():
 
 @app.post("/collect")
 def collect():
-    return collect_feeddata()
+    return collect_and_process_feeddata()
 
 
-# @app.get("/feed", response_model_exclude_none=True)
-# def feeds():
-#     return get_feeddata()
+@app.get("/feed", response_model_exclude_none=True)
+def feeds():
+    return get_feeddatas()
 
 
-# @app.get("/feed/{team_id}", response_model_exclude_none=True)
-# def team_feeds(team_id: int):
-#     return get_teamfeeds(team_id)
+@app.get("/feed/{team_abbr}", response_model_exclude_none=True)
+def team_feeds(team_abbr: str):
+    return get_feeddatas(team_abbr)
 
 
 if __name__ == "__main__":
