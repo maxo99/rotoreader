@@ -3,17 +3,18 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from dotenv import load_dotenv
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, Query
 from fastapi_pagination import Page, Params, add_pagination
 from fastapi_pagination.ext.sqlmodel import apaginate
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rotoreader.config import APP_PORT, ROOT_DIR
+from rotoreader.model.collection import CollectionResponse
 from rotoreader.model.feeddata import FeedData
+from rotoreader.model.healthstatus import HealthStatusResponse
 from rotoreader.service import PG_CLIENT
 from rotoreader.service.feedsreader import (
     collect_and_process_feeddata,
-    get_feeddatas,
 )
 
 load_dotenv(ROOT_DIR)
@@ -34,26 +35,30 @@ app = FastAPI(lifespan=lifespan)
 add_pagination(app)
 
 
-@app.get("/")
+@app.get("/", response_model=HealthStatusResponse)
 async def health():
-    return {"status": "running"}
+    return HealthStatusResponse()
 
 
-@app.post("/collect")
+# TODO: Change from post
+@app.post("/collect", response_model=CollectionResponse)
 async def collect():
     return await collect_and_process_feeddata()
 
 
-@app.get(
-        "/feed", response_model_exclude_none=True)
+@app.get("/feed", response_model_exclude_none=True)
 async def feeds(
     session: Annotated[AsyncSession, Depends(PG_CLIENT.get_session)],
     params: Annotated[Params, Depends()],
-    team: str | None = None,
+    team: Annotated[
+        str | None,
+        Query(description="Filter feeds by team abbreviation. If not provided, returns feeds for all teams.")
+    ] = None,
 ) -> Page[FeedData]:
     logger.info(f"Fetching feeds for team: {team} with params: {params}")
     query = PG_CLIENT.get_feeddatas_query(team)
     return await apaginate(session, query, params)
+
 
 if __name__ == "__main__":
     import uvicorn
