@@ -12,13 +12,14 @@ logger = logging.getLogger(__name__)
 
 FEED_FETCH_LIMIT = 5
 
-def collect_and_process_feeddata() -> int:
-    fd = collect_feeddatas()
-    process_feeddata(fd)
+
+async def collect_and_process_feeddata() -> int:
+    fd = await collect_feeddatas()
+    await process_feeddata(fd)
     return len(fd)
 
 
-def collect_feeddatas() -> list[FeedData]:
+async def collect_feeddatas() -> list[FeedData]:
     fd_list = []
     for feed_id, url in NEWS_RSS_FEEDS.items():
         logger.info(f"Fetching {feed_id} from {url}")
@@ -50,11 +51,12 @@ def collect_feeddatas() -> list[FeedData]:
     return fd_list
 
 
-def process_feeddata(fd_list: list[FeedData]):
+async def process_feeddata(fd_list: list[FeedData]):
     for fd in fd_list:
         logger.info(f"Processing feed data {fd.id}")
         try:
-            for team in get_teams():
+            teams = await get_teams()
+            for team in teams:
                 if any(tag in fd.title for tag in team.searchTags) or any(
                     name in fd.summary for name in team.searchTags
                 ):
@@ -63,12 +65,12 @@ def process_feeddata(fd_list: list[FeedData]):
                     if len(fd.teams) >= 2:
                         break
             logger.info(f"Storing feed data {fd.id} with teams {fd.teams}")
-            PG_CLIENT.add_feeddata(fd)
+            await PG_CLIENT.add_feeddata(fd)
         except Exception as e:
             logger.error(f"Error processing feed data {fd.id}: {e}")
 
 
-def get_feeddatas(team_abbr: str | None = None) -> list[FeedData]:
+async def get_feeddatas(team_abbr: str | None = None) -> list[FeedData]:
     if team_abbr:
-        return PG_CLIENT.get_feeds_for_team(team_abbr)
-    return PG_CLIENT.get_all_feeddatas()
+        return await PG_CLIENT.get_feeds_for_team(team_abbr)
+    return await PG_CLIENT.get_all_feeddatas()

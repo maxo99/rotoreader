@@ -19,5 +19,10 @@ GET {{BASE_URL}}/feed/
 ###
 
 # Get all FeedDatas
-GET {{BASE_URL}}/feed/MIA
+GET {{BASE_URL}}/feed?size=1
+
+###
+
+# Get Team FeedDatas
+GET {{BASE_URL}}/feed?team=BUF
 

@@ -1,7 +1,8 @@
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
 from typing import Any
 
 import pytest
+import pytest_asyncio
 from sqlalchemy import text
 from testcontainers.postgres import PostgresContainer
 
@@ -22,7 +23,7 @@ def postgres_container() -> Generator[PgVectorContainer, None, None]:
         dbname="rotoreader_test",
         username="test_user",
         password="test_password",
-        driver="psycopg2",
+        driver=None,  # Don't specify driver, we'll construct the URL manually
     ) as container:
         # Wait for container to be ready
         container.get_connection_url()
@@ -32,18 +33,30 @@ def postgres_container() -> Generator[PgVectorContainer, None, None]:
 @pytest.fixture(scope="session")
 def db_config(postgres_container: PgVectorContainer) -> dict[str, Any]:
     """Database configuration from testcontainer."""
+    # Construct async connection URL with asyncpg driver
+    host = postgres_container.get_container_host_ip()
+    port = postgres_container.get_exposed_port(5432)
+    database = postgres_container.dbname
+    username = postgres_container.username
+    password = postgres_container.password
+
+    # Use asyncpg driver for async connections
+    async_url = f"postgresql+asyncpg://{username}:{password}@{host}:{port}/{database}"
+
     return {
-        "host": postgres_container.get_container_host_ip(),
-        "port": postgres_container.get_exposed_port(5432),
-        "database": postgres_container.dbname,
-        "username": postgres_container.username,
-        "password": postgres_container.password,
-        "url": postgres_container.get_connection_url(),
+        "host": host,
+        "port": port,
+        "database": database,
+        "username": username,
+        "password": password,
+        "url": async_url,
     }
 
 
-@pytest.fixture(scope="session")
-def postgres_client(db_config: dict[str, Any]) -> Generator[PostgresClient, None, None]:
+@pytest_asyncio.fixture(scope="function")
+async def postgres_client(
+    db_config: dict[str, Any],
+) -> AsyncGenerator[PostgresClient, None]:
     # Import and store original client
     import rotoreader.service
 
@@ -51,40 +64,25 @@ def postgres_client(db_config: dict[str, Any]) -> Generator[PostgresClient, None
 
     client = None
     try:
-        client = PostgresClient(db_url=db_config["url"])
+        # Create a new client for each test with the current event loop
+        # Use NullPool to avoid connection pool issues across event loops in tests
+        client = PostgresClient(db_url=db_config["url"], use_null_pool=True)
 
-        # Setup: Create pgvector extension and any initial schema
-        with client.engine.connect() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-            conn.commit()
+        # Setup: Create pgvector extension and initialize tables
+        async with client.engine.begin() as conn:
+            await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+            await conn.run_sync(lambda sync_conn: sync_conn.execute(text("SELECT 1")))
+
+        # Initialize tables
+        await client.initialize()
 
         # Monkey patch the global PG_CLIENT
         rotoreader.service.PG_CLIENT = client
 
         yield client
 
-        # Teardown: Clean up tables
-        with client.engine.connect() as conn:
-            # Get all user tables and truncate them
-            result = conn.execute(
-                text("""
-                SELECT tablename FROM pg_tables
-                WHERE schemaname = 'public'
-                AND tablename NOT LIKE 'pg_%'
-            """)
-            )
-            tables = [row[0] for row in result]
-
-            if tables:
-                # Disable foreign key checks, truncate, re-enable
-                conn.execute(text("SET session_replication_role = replica"))
-                for table in tables:
-                    conn.execute(text(f"TRUNCATE TABLE {table} CASCADE"))
-                conn.execute(text("SET session_replication_role = DEFAULT"))
-                conn.commit()
-
     finally:
         # Restore original client
         rotoreader.service.PG_CLIENT = original_client
         if client:
-            client.close()
+            await client.close()
