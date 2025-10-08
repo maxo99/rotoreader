@@ -9,7 +9,7 @@ GET {{BASE_URL}}/
 ###
 
 # Trigger Feed Collection and Processing
-POST {{BASE_URL}}/collect/
+PUT {{BASE_URL}}/collect?limit=1
 
 ###
 

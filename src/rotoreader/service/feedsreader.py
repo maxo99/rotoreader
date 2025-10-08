@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import feedparser
@@ -10,43 +11,32 @@ from rotoreader.service.teamprofiler import get_teams
 logger = logging.getLogger(__name__)
 
 
-FEED_FETCH_LIMIT = 5
-
-
-async def collect_and_process_feeddata() -> int:
-    fd = await collect_feeddatas()
+async def collect_and_process_feeddata(limit: int = 5) -> int:
+    logger.info("Starting feed data collection and processing")
+    fd = await collect_feeddatas(limit=limit)
+    logger.info(f"Collected {len(fd)} feed data entries")
     await process_feeddata(fd)
+    logger.info("Completed processing feed data")
     return len(fd)
 
 
-async def collect_feeddatas() -> list[FeedData]:
+async def collect_feeddatas(limit: int) -> list[FeedData]:
     fd_list = []
     for feed_id, url in NEWS_RSS_FEEDS.items():
         logger.info(f"Fetching {feed_id} from {url}")
-        feed = feedparser.parse(url)
+        feed = await asyncio.to_thread(feedparser.parse, url)
         if feed.bozo:
             logger.error(f"Error fetching {feed_id}: {feed.bozo_exception}")
             continue
-
-        for entry in feed.entries[:FEED_FETCH_LIMIT]:
+        logger.info(f"Fetched {len(feed.entries)} entries from {feed_id}")
+        for entry in feed.entries[:limit]:
             if isinstance(entry, dict):
                 logger.info(f"Processing {feed_id} entry {entry.get('id', '')}")
                 try:
-                    fd_list.append(
-                        FeedData(
-                            feed_id=feed_id,
-                            id=str(entry.get("id", "")),
-                            title=str(entry.get("title", "")),
-                            summary=str(entry.get("summary", "")),
-                            published=str(entry.get("published", "")),
-                            author=str(entry.get("author", "Unknown")),
-                            link=str(entry.get("link", "")),
-                        )
-                    )
+                    fd_list.append(FeedData.from_feedparserdict(feed_id, entry))
                 except Exception as e:
                     logger.error(f"Error processing {feed_id} entry {entry}: {e}")
                     continue
-                logger.debug(entry)
         logger.info(f"Collected {len(fd_list)} entries from {feed_id}")
     return fd_list
 

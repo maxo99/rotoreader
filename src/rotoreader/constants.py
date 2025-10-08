@@ -22,10 +22,10 @@ class Team(BaseModel):
 
 
 NEWS_RSS_FEEDS = {
-    "ESPN_FEED": "https://www.espn.com/espn/rss/nfl/news",
-    "CBS_FEED": "https://www.cbssports.com/rss/headlines/nfl/",
-    "YAHOO_FEED": "https://sports.yahoo.com/nfl/rss.xml",
-    "SB_NATION_FEED": "https://www.sbnation.com/rss/nfl/index.xml",
+    "ESPN": "https://www.espn.com/espn/rss/nfl/news",
+    "CBS": "https://www.cbssports.com/rss/headlines/nfl/",
+    "YAHOO": "https://sports.yahoo.com/nfl/rss.xml",
+    "SBNATION": "https://www.sbnation.com/rss/nfl/index.xml",
 }
 
 

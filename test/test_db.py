@@ -1,7 +1,6 @@
 import logging
 
-from sqlalchemy import text
-
+# from sqlalchemy import text
 from rotoreader.adapters.postgres_client import PostgresClient
 from rotoreader.service.feedsreader import collect_and_process_feeddata, get_feeddatas
 from rotoreader.service.teamprofiler import (

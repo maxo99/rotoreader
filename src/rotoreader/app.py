@@ -2,13 +2,12 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from dotenv import load_dotenv
 from fastapi import Depends, FastAPI, Query
 from fastapi_pagination import Page, Params, add_pagination
 from fastapi_pagination.ext.sqlmodel import apaginate
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rotoreader.config import APP_PORT, ROOT_DIR
+from rotoreader.config import APP_PORT, LOG_LEVEL
 from rotoreader.model.collection import CollectionResponse
 from rotoreader.model.feeddata import FeedData
 from rotoreader.model.healthstatus import HealthStatusResponse
@@ -17,7 +16,6 @@ from rotoreader.service.feedsreader import (
     collect_and_process_feeddata,
 )
 
-load_dotenv(ROOT_DIR)
 logger = logging.getLogger(__name__)
 
 
@@ -40,10 +38,19 @@ async def health():
     return HealthStatusResponse()
 
 
-# TODO: Change from post
-@app.post("/collect", response_model=CollectionResponse)
-async def collect():
-    return await collect_and_process_feeddata()
+@app.put("/collect", response_model=CollectionResponse)
+async def collect(
+    limit: Annotated[
+        int,
+        Query(description="Limit to pull"),
+    ] = 5,
+    provider: Annotated[
+        str | None,
+        Query(description="Provider to pull from."),
+    ] = None,
+):
+    count = await collect_and_process_feeddata(limit=limit)
+    return CollectionResponse(count=count)
 
 
 @app.get("/feed", response_model_exclude_none=True)
@@ -52,7 +59,9 @@ async def feeds(
     params: Annotated[Params, Depends()],
     team: Annotated[
         str | None,
-        Query(description="Filter feeds by team abbreviation. If not provided, returns feeds for all teams.")
+        Query(
+            description="Filter feeds by team abbreviation. If not provided, returns feeds for all teams."
+        ),
     ] = None,
 ) -> Page[FeedData]:
     logger.info(f"Fetching feeds for team: {team} with params: {params}")
@@ -63,4 +72,4 @@ async def feeds(
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run(app, host="0.0.0.0", port=APP_PORT)
+    uvicorn.run(app, host="0.0.0.0", port=APP_PORT, log_level=LOG_LEVEL)
