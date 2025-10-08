@@ -1,6 +1,5 @@
 ###
-@EVENT_ID = 1024873536
-@BASE_URL = http://localhost:8001
+@BASE_URL = http://localhost:{{ $dotenv APP_PORT }}
 
 # Health Check
 GET {{BASE_URL}}/
@@ -10,6 +9,11 @@ GET {{BASE_URL}}/
 
 # Trigger Feed Collection and Processing
 PUT {{BASE_URL}}/collect?limit=1
+
+###
+
+# Test Prometheus Endpoint
+GET {{BASE_URL}}/metrics
 
 ###
 

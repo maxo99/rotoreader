@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Query
 from fastapi_pagination import Page, Params, add_pagination
 from fastapi_pagination.ext.sqlmodel import apaginate
+from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from rotoreader.config import APP_PORT, LOG_LEVEL
@@ -22,15 +23,30 @@ logger = logging.getLogger(__name__)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan - startup and shutdown events"""
+
     # Startup
     await PG_CLIENT.initialize()
+    logging.info("PostgresClient initialized.")
+
+    logging.info("Application startup complete.")
     yield
+    logging.info("Application shutdown starting.")
+
     # Shutdown - cleanup if needed
     await PG_CLIENT.close()
+    logging.info("PostgresClient connection closed.")
+    
+    logging.info("Application shutdown complete.")
+
 
 
 app = FastAPI(lifespan=lifespan)
 add_pagination(app)
+
+# Setup Prometheus instrumentation (must be done before app starts)
+instrumentator = Instrumentator()
+instrumentator.instrument(app).expose(app)
+logging.info("Prometheus metrics instrumentation configured.")
 
 
 @app.get("/", response_model=HealthStatusResponse)

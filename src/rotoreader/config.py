@@ -3,20 +3,23 @@ import os
 
 from dotenv import load_dotenv
 
+load_dotenv()
+
 if root_from_env := os.getenv("ROOT_DIR"):
     ROOT_DIR = root_from_env
 else:
     import git
 
     ROOT_DIR = str(git.Repo(".", search_parent_directories=True).working_tree_dir)
+
 load_dotenv(ROOT_DIR)
 
 DATA_DIR = os.path.join(ROOT_DIR, "data")
-APP_PORT = int(os.getenv("APP_PORT", 8001))
+APP_PORT = int(os.getenv("APP_PORT", 8081))
 
 ## Logging settings
 
-LOG_LEVEL = getattr(logging, os.getenv("LOG_LEVEL", "INFO"))
+LOG_LEVEL = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper())
 logging.basicConfig(level=LOG_LEVEL)
 
 
