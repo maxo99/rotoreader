@@ -1,23 +1,23 @@
 FROM ghcr.io/astral-sh/uv:0.8-python3.13-bookworm
 
-ENV PYTHONDONTWRITEBYTECODE=1
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+	PYTHONUNBUFFERED=1 \
+	ROOT_DIR=/app
 
 WORKDIR /app
 
-# Copy dependency files first for better layer caching
-COPY pyproject.toml uv.lock ./
+RUN useradd -u 10001 -m appuser \
+&& chown -R 10001:10001 /app
+USER 10001
 
-# Install dependencies
+COPY --chown=10001:10001 pyproject.toml uv.lock ./
+
 RUN uv sync --frozen --no-install-project
 
-# Copy application source
-COPY src ./src
+COPY --chown=10001:10001 src ./src
 
-# Install the project itself
 RUN uv sync --frozen
 
-# Expose FastAPI
-EXPOSE 8000
+EXPOSE 8081
 
 CMD ["uv", "run", "python", "-m", "rotoreader.app"]

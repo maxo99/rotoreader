@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: collect-hourly
+  namespace: rotoreader
+spec:
+  schedule: "0 * * * *" # hourly
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: curl
+              image: curlimages/curl:8.10.1
+              args:
+                - sh
+                - -c
+                - >
+                  curl -fsS -X PUT http://rotoreader:8081/collect || { echo "collect failed"; exit 1; }

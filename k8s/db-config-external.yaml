@@ -1,0 +1,10 @@
+# Apply this instead of db-config-incluster.yaml to point the app at an external Postgres
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: db-config
+  namespace: rotoreader
+data:
+  POSTGRES_HOST: "localhost"
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: "rotoreader"

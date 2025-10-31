@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: rotoreader
+  namespace: rotoreader
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: rotoreader.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: rotoreader
+                port:
+                  number: 8081
+  # tls:
+  #   - hosts: [rotoreader.example.com]
+  #     secretName: rotoreader-tls
