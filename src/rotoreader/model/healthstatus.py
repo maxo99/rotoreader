@@ -11,3 +11,4 @@ class HealthStatusResponse(BaseModel):
     status: Literal["running"] = Field(default="running")
     timestamp: datetime = Field(default_factory=_get_utc_now)
     version: str | None = Field(default=__version__)
+    startup_time: datetime | None = Field(default=None)

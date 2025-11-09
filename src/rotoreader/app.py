@@ -8,6 +8,7 @@ from fastapi_pagination.ext.sqlmodel import apaginate
 from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from rotoreader import utils
 from rotoreader.config import APP_PORT, LOG_LEVEL
 from rotoreader.model.collection import CollectionResponse
 from rotoreader.model.feeddata import FeedData
@@ -35,13 +36,14 @@ async def lifespan(app: FastAPI):
     # Shutdown - cleanup if needed
     await PG_CLIENT.close()
     logging.info("PostgresClient connection closed.")
-    
-    logging.info("Application shutdown complete.")
 
+    logging.info("Application shutdown complete.")
 
 
 app = FastAPI(lifespan=lifespan)
 add_pagination(app)
+
+START_UP = utils._get_utc_now()
 
 # Setup Prometheus instrumentation (must be done before app starts)
 instrumentator = Instrumentator()
@@ -49,13 +51,19 @@ instrumentator.instrument(app).expose(app)
 logging.info("Prometheus metrics instrumentation configured.")
 
 
-@app.get("/", response_model=HealthStatusResponse)
+@app.get("/", response_model=HealthStatusResponse, operation_id="health_check")
 async def health():
-    return HealthStatusResponse()
+    return HealthStatusResponse(startup_time=START_UP)
 
 
-@app.put("/collect", response_model=CollectionResponse)
-async def collect(
+@app.put(
+    "/collect",
+    response_model=CollectionResponse,
+    tags=["feeds"],
+    operation_id="collect_feeddata",
+    summary="Collect feed data from RSS feeds",
+)
+async def collect_feeddata(
     limit: Annotated[
         int,
         Query(description="Limit to pull"),
@@ -69,8 +77,14 @@ async def collect(
     return CollectionResponse(count=count)
 
 
-@app.get("/feed", response_model_exclude_none=True)
-async def feeds(
+@app.get(
+    "/feed",
+    response_model_exclude_none=True,
+    tags=["feeds"],
+    operation_id="get_feeds",
+    summary="Get feed data, optionally filtered by team",
+)
+async def get_feeds(
     session: Annotated[AsyncSession, Depends(PG_CLIENT.get_session)],
     params: Annotated[Params, Depends()],
     team: Annotated[

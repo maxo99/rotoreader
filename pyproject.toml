@@ -15,7 +15,7 @@ dependencies = [
     "prometheus-fastapi-instrumentator>=7.1.0",
     "psycopg2-binary>=2.9.10",
     "sqlmodel>=0.0.25",
-    "uvicorn>=0.37.0",
+    "uvicorn[standard]>=0.37.0",
 ]
 
 [dependency-groups]
