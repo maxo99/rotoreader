@@ -5,7 +5,7 @@ import feedparser
 
 from rotoreader.constants import NEWS_RSS_FEEDS
 from rotoreader.model.feeddata import FeedData
-from rotoreader.service import PG_CLIENT
+from rotoreader.service import get_client
 from rotoreader.service.teamprofiler import get_teams
 
 logger = logging.getLogger(__name__)
@@ -55,12 +55,12 @@ async def process_feeddata(fd_list: list[FeedData]):
                     if len(fd.teams) >= 2:
                         break
             logger.info(f"Storing feed data {fd.id} with teams {fd.teams}")
-            await PG_CLIENT.add_feeddata(fd)
+            await get_client().add_feeddata(fd)
         except Exception as e:
             logger.error(f"Error processing feed data {fd.id}: {e}")
 
 
 async def get_feeddatas(team_abbr: str | None = None) -> list[FeedData]:
     if team_abbr:
-        return await PG_CLIENT.get_feeds_for_team(team_abbr)
-    return await PG_CLIENT.get_all_feeddatas()
+        return await get_client().get_feeds_for_team(team_abbr)
+    return await get_client().get_all_feeddatas()

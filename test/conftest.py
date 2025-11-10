@@ -60,7 +60,7 @@ async def postgres_client(
     # Import and store original client
     import rotoreader.service
 
-    original_client = rotoreader.service.PG_CLIENT
+    original_client = rotoreader.service.get_client()
 
     client = None
     try:
@@ -77,12 +77,12 @@ async def postgres_client(
         await client.initialize()
 
         # Monkey patch the global PG_CLIENT
-        rotoreader.service.PG_CLIENT = client
+        rotoreader.service.get_client() = client
 
         yield client
 
     finally:
         # Restore original client
-        rotoreader.service.PG_CLIENT = original_client
+        rotoreader.service.get_client() = original_client
         if client:
             await client.close()

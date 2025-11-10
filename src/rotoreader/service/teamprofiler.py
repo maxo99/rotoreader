@@ -1,7 +1,7 @@
 import nfl_data_py as nfl
 
 from rotoreader.model.teamdata import TeamData
-from rotoreader.service import PG_CLIENT
+from rotoreader.service import get_client
 
 
 def load_team_data():
@@ -11,7 +11,7 @@ def load_team_data():
 
 async def load_and_store_team_data():
     teams_data = load_team_data()
-    await PG_CLIENT.add_teamdata(teams_data)
+    await get_client().add_teamdata(teams_data)
 
 
 TEAMS_PRELOADED = False
@@ -24,5 +24,5 @@ async def get_teams() -> list[TeamData]:
         await load_and_store_team_data()
         TEAMS_PRELOADED = True
     if TEAMS_CACHE is None:
-        TEAMS_CACHE = await PG_CLIENT.get_teams()
+        TEAMS_CACHE = await get_client().get_teams()
     return TEAMS_CACHE

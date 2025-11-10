@@ -5,50 +5,50 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, Query
 from fastapi_pagination import Page, Params, add_pagination
 from fastapi_pagination.ext.sqlmodel import apaginate
-from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from rotoreader import utils
+from rotoreader import __version__, utils
+from rotoreader.app_initializer import (
+    instrument_prometheus,
+    instrument_tracing,
+    setup_tracing,
+)
 from rotoreader.config import APP_PORT, LOG_LEVEL
 from rotoreader.model.collection import CollectionResponse
 from rotoreader.model.feeddata import FeedData
 from rotoreader.model.healthstatus import HealthStatusResponse
-from rotoreader.service import PG_CLIENT
-from rotoreader.service.feedsreader import (
-    collect_and_process_feeddata,
-)
+from rotoreader.service import get_client
+from rotoreader.service.feedsreader import collect_and_process_feeddata
 
 logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan - startup and shutdown events"""
+    logging.info(f"Application startup starting with app:{app.version}.")
 
-    # Startup
-    await PG_CLIENT.initialize()
+
+    await get_client().initialize()
     logging.info("PostgresClient initialized.")
-
     logging.info("Application startup complete.")
     yield
+
     logging.info("Application shutdown starting.")
-
-    # Shutdown - cleanup if needed
-    await PG_CLIENT.close()
-    logging.info("PostgresClient connection closed.")
-
+    await get_client().close()
     logging.info("Application shutdown complete.")
 
 
-app = FastAPI(lifespan=lifespan)
-add_pagination(app)
-
 START_UP = utils._get_utc_now()
+logger.info(f"Application version:{__version__} startup time (UTC): {START_UP}")
 
-# Setup Prometheus instrumentation (must be done before app starts)
-instrumentator = Instrumentator()
-instrumentator.instrument(app).expose(app)
-logging.info("Prometheus metrics instrumentation configured.")
+setup_tracing()
+app = FastAPI(
+    lifespan=lifespan,
+    version=__version__,
+)
+add_pagination(app)
+instrument_tracing(app)
+instrument_prometheus(app)
 
 
 @app.get("/", response_model=HealthStatusResponse, operation_id="health_check")
@@ -85,7 +85,7 @@ async def collect_feeddata(
     summary="Get feed data, optionally filtered by team",
 )
 async def get_feeds(
-    session: Annotated[AsyncSession, Depends(PG_CLIENT.get_session)],
+    session: Annotated[AsyncSession, Depends(get_client().get_session)],
     params: Annotated[Params, Depends()],
     team: Annotated[
         str | None,
@@ -95,7 +95,7 @@ async def get_feeds(
     ] = None,
 ) -> Page[FeedData]:
     logger.info(f"Fetching feeds for team: {team} with params: {params}")
-    query = PG_CLIENT.get_feeddatas_query(team)
+    query = get_client().get_feeddatas_query(team)
     return await apaginate(session, query, params)
 
 
