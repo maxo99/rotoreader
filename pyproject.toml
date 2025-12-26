@@ -6,18 +6,26 @@ readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "asyncpg>=0.30.0",
+    "bs4>=0.0.2",
     "dotenv>=0.9.9",
+    "evaluate>=0.4.6",
     "fastapi>=0.118.0",
     "fastapi-pagination>=0.14.2",
     "feedparser>=6.0.12",
     "gitpython>=3.1.45",
-    "nfl-data-py==0.3.3",
+    "ipywidgets>=8.1.8",
+    # "nfl-data-py==0.3.3",
+    "label-studio>=1.21.0",
+    "nflreadpy>=0.1.5",
     "opentelemetry-exporter-otlp>=1.38.0",
     "opentelemetry-instrumentation-fastapi>=0.59b0",
     "opentelemetry-sdk>=1.38.0",
+    "pandas>=1.5.3",
     "prometheus-fastapi-instrumentator>=7.1.0",
     "psycopg2-binary>=2.9.10",
+    "seqeval>=1.2.2",
     "sqlmodel>=0.0.25",
+    "transformers>=4.30.0",
     "uvicorn[standard]>=0.37.0",
 ]
 
@@ -27,6 +35,7 @@ dev = [
     "pytest>=8.4.2",
     "pytest-asyncio>=1.2.0",
     "rotoreader",
+    "ruff>=0.14.10",
     "testcontainers>=4.8.1",
 ]
 
@@ -65,6 +74,7 @@ disable = [
     "W1203", # logging-format-interpolation
     "W0718", # exception-escape
     "W0511", # TODOs
+    "B905", # 
 ]
 
 [tool.pylint.basic]

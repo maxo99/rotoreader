@@ -6,6 +6,7 @@ import feedparser
 from rotoreader.constants import NEWS_RSS_FEEDS
 from rotoreader.model.feeddata import FeedData
 from rotoreader.service import get_client
+from rotoreader.service.ner_extractor import extract_injuries_and_status
 from rotoreader.service.teamprofiler import get_teams
 
 logger = logging.getLogger(__name__)
@@ -45,6 +46,16 @@ async def process_feeddata(fd_list: list[FeedData]):
     for fd in fd_list:
         logger.info(f"Processing feed data {fd.id}")
         try:
+            # Extract injuries and status using NER model
+            text = f"{fd.title} {fd.summary}"
+            injuries, status = extract_injuries_and_status(text)
+            fd.injuries = injuries
+            fd.status = status
+            logger.info(
+                f"Extracted injuries={injuries}, status={status} for feed {fd.id}"
+            )
+
+            # Match teams
             teams = await get_teams()
             for team in teams:
                 if any(tag in fd.title for tag in team.searchTags) or any(

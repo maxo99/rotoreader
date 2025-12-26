@@ -25,6 +25,8 @@ class FeedData(SQLModel, table=True):
     author: str = Field(default="Unknown")
     teams: list[str] = Field(default=[], sa_column=Column(JSON))
     players: list[str] = Field(default=[], sa_column=Column(JSON))
+    injuries: list[str] = Field(default=[], sa_column=Column(JSON))
+    status: str = Field(default="", sa_column=Column(String))
 
     @classmethod
     def from_feedparserdict(cls, feed_id: str, data: dict) -> "FeedData":

@@ -9,3 +9,7 @@ wheels/
 # Virtual environments
 .venv
 .env
+data/
+workspaces/
+AGENTS.md
+opencode.json
